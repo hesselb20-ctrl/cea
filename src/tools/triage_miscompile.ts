@@ -18,6 +18,7 @@ export type TriageVerdict =
   | 'undefined_behavior'
   | 'not_reproduced'
   | 'nondeterministic_program'
+  | 'suspected_undetected_ub'
   | 'transformation_refuted'
   | 'transformation_verified'
   | 'unresolved';
@@ -69,7 +70,7 @@ export const triageMiscompile = defineTool({
       return {
         status: verdict === 'unresolved' ? 'inconclusive' as const : 'ok' as const,
         summary: headline,
-        result: { verdict, headline, is_compiler_bug: verdict === 'transformation_refuted' ? 'likely' : verdict === 'undefined_behavior' || verdict === 'nondeterministic_program' ? 'no' : 'not established', steps: log, ...extra, report_view: v.name, report_markdown: preview(report, 200, 9000) },
+        result: { verdict, headline, is_compiler_bug: verdict === 'transformation_refuted' ? 'likely' : verdict === 'undefined_behavior' || verdict === 'nondeterministic_program' ? 'no' : verdict === 'suspected_undetected_ub' ? 'unlikely' : 'not established', steps: log, ...extra, report_view: v.name, report_markdown: preview(report, 200, 9000) },
       };
     };
 
@@ -194,10 +195,21 @@ export const triageMiscompile = defineTool({
     }
 
     // Verdict.
-    const vv = validation?.result['verdict'] as string | undefined;
+    const vraw = validation?.result['verdict'] as string | undefined;
+    const vv = vraw === 'correct' || vraw === 'incorrect' ? vraw : undefined;
+    const tbaa = validation?.result['uses_tbaa'] === true;
     let verdict: TriageVerdict = 'unresolved';
     let headline: string;
-    if (vv === 'incorrect') {
+    if (probeHides) {
+      // The semantic-flag probe outranks Alive2 here: Alive2 ignores TBAA, so it "refutes"
+      // transformations that strict aliasing permits. Never turn that into a bug claim.
+      verdict = 'suspected_undetected_ub';
+      const alive = vv === 'incorrect'
+        ? 'Alive2 does not verify the transformation, but Alive2 ignores type-based aliasing, so that does not implicate the pass'
+        : vv === 'correct' ? 'Alive2 verifies the transformation' : tbaa ? 'the transformation relies on !tbaa (strict aliasing), which Alive2 cannot check' : 'the transformation was not validated';
+      headline = `suspected undefined behaviour that sanitizers cannot see: the difference disappears with ${SEMANTIC_PROBE.join(' ')}${culprit ? `; behaviour flips at ${culprit.pass}` : ''}; ${alive}`;
+      ev.infer('The compiler is using an assumption the language standard grants it (no signed overflow, strict aliasing, or non-null dereferenced pointers). The likeliest explanation is that the program breaks that assumption.');
+    } else if (vv === 'incorrect') {
       verdict = 'transformation_refuted';
       headline = `likely compiler bug: Alive2 refutes the transformation made by ${culprit!.pass}`;
       ev.infer(`Alive2 found an input for which the IR after ${culprit!.pass} does not refine the IR before it. That is evidence of an incorrect transformation.`);
@@ -211,7 +223,6 @@ export const triageMiscompile = defineTool({
         : 'unresolved: the difference reproduces but no culprit pass was isolated';
       if (culprit && !validation) ev.unknown('Whether the culprit pass\'s transformation is valid: no Alive2 run was possible.');
     }
-    if (probeHides && verdict !== 'transformation_refuted') headline += '; the difference disappears with -fwrapv/-fno-strict-aliasing, which points at UB in the program';
     if (ubUnknown) headline += ' (UB status unverified)';
 
     const reducedOk = reduced?.result['verified'] === true;
@@ -262,7 +273,7 @@ export const triageMiscompile = defineTool({
         ? [`Alive2: \`${bad.function ?? fn ?? '?'}\` does not verify: **${bad.error ?? 'refinement failure'}**.`, '', '```', bad.counterexample ?? '(no counterexample text)', '```']
         : vv === 'correct'
           ? ['None found: Alive2 verifies the transformation within its bounds.']
-          : ['Not established: the transformation was not checked by Alive2.']),
+          : [`Not established: ${validation ? validation.summary : 'the transformation was not checked by Alive2'}.`, ...(tbaa ? ['', 'The transformation relies on `!tbaa` metadata, i.e. on the strict aliasing rule. It is valid exactly when the program obeys that rule.'] : [])]),
       '',
       '## Inferred (weaker than the observations above)',
       '',
@@ -274,7 +285,7 @@ export const triageMiscompile = defineTool({
       '## Unknown',
       '',
       '- Whether the program has undefined behaviour that UBSan/ASan cannot see (strict aliasing, unsequenced modification, uninitialised reads).',
-      ...(vv === undefined && culprit ? ['- Whether the culprit transformation is valid (no Alive2 result).'] : []),
+      ...(vv === undefined && culprit ? [`- Whether the culprit transformation is valid: ${validation ? validation.summary : 'no Alive2 run was possible'}.`] : []),
       ...(vv !== undefined ? ['- Validity beyond Alive2\'s loop bound and memory model.'] : []),
       '- Whether the issue reproduces on the compiler\'s current main branch.',
       '',

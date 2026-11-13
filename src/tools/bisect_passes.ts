@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { behaviorKey, checkFlags, compileTo, DEFAULT_RUN, driverFor, FlagsSchema, materialize, RunSpecSchema, runProgram, SourceSchema, TimeoutSchema } from '../core/build.js';
 import { defineTool } from '../core/context.js';
 import { CeaError } from '../core/errors.js';
-import { normalizeNewlines, preview } from '../core/util.js';
+import { normalizeNewlines, preview, sha256 } from '../core/util.js';
 
 export interface BisectLine {
   n: number;
@@ -50,7 +50,6 @@ export const bisectPasses = defineTool({
     let goodKey: string | null = null;
     if (input.mode === 'behavior') {
       if (input.expected_stdout !== undefined) {
-        const { sha256 } = await import('../core/util.js');
         goodKey = `0|${sha256(normalizeNewlines(input.expected_stdout))}`;
         ev.observe('Reference behaviour: exit 0 with the expected_stdout given by the caller.');
       } else {

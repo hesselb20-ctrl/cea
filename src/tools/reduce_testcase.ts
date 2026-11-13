@@ -1,13 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { checkFlags, compileTo, DEFAULT_RUN, driverFor, FlagsSchema, materialize, RunSpecSchema, runProgram, SourceSchema, TimeoutSchema } from '../core/build.js';
+import { checkFlags, compileTo, DEFAULT_RUN, driverFor, FlagsSchema, materialize, RunSpecSchema, runProgram, runtimeDirs, SourceSchema, TimeoutSchema } from '../core/build.js';
 import { defineTool } from '../core/context.js';
 import { CeaError } from '../core/errors.js';
 import { ddminLines, renderInterestingScript, renderShellWrapper, type InterestingConfig, type Step } from '../core/interesting.js';
 import { countLines, normalizeNewlines, preview } from '../core/util.js';
 
 const CRASH_LINE = /(Assertion .* failed\.?|LLVM ERROR: .*|internal compiler error: .*|UNREACHABLE executed.*|fatal error: error in backend: .*)/;
+
+const INFRA_FRAME = /PrintStackTrace|SignalHandler|RunSignalHandlers|CrashRecovery|__restore_rt|^raise$|^abort$|^gsignal$|sigaction|__pthread|__libc|^_start$|^main$/;
+
+/**
+ * Pick a substring of the compiler's crash output that identifies this crash: the assertion or
+ * fatal-error text if there is one, otherwise the innermost symbolised stack frame.
+ */
+export function deriveCrashSignature(stderr: string): { signature: string; specific: boolean } | null {
+  const m = CRASH_LINE.exec(stderr);
+  if (m) return { signature: m[1]!.trim().slice(0, 200), specific: true };
+  for (const line of stderr.split(/\r?\n/)) {
+    const f = /^\s*#\d+ 0x[0-9a-fA-F]+ (.+)$/.exec(line);
+    if (!f) continue;
+    const sym = f[1]!.replace(/^\(anonymous namespace\)::/, '').split('(')[0]!.trim();
+    if (sym.length < 4 || !/[A-Za-z_]/.test(sym) || /^[\/A-Za-z]:?[\\\/]/.test(sym) || INFRA_FRAME.test(sym)) continue;
+    return { signature: sym.slice(0, 200), specific: true };
+  }
+  if (/PLEASE submit a bug report|internal compiler error/.test(stderr)) {
+    return { signature: /internal compiler error/.test(stderr) ? 'internal compiler error' : 'PLEASE submit a bug report', specific: false };
+  }
+  return null;
+}
 
 export const reduceTestcase = defineTool({
   name: 'reduce_testcase',
@@ -39,9 +61,7 @@ export const reduceTestcase = defineTool({
     const fileName = `input${ext}`;
     const runMs = input.run.timeout_s * 1000;
     const steps: Step[] = [];
-    const pathDirs = [path.dirname(compiler.path)];
-    const mingwBin = fs.readdirSync(path.dirname(path.dirname(compiler.path))).filter((d) => /mingw|w64/.test(d)).map((d) => path.join(path.dirname(path.dirname(compiler.path)), d, 'bin')).filter((d) => fs.existsSync(d));
-    pathDirs.push(...mingwBin);
+    const pathDirs = runtimeDirs(compiler.path);
     let description: string;
     let ubCheck: 'sanitizers' | 'none' = 'none';
 
@@ -52,9 +72,10 @@ export const reduceTestcase = defineTool({
       }
       let signature = input.crash_signature;
       if (!signature) {
-        const m = CRASH_LINE.exec(orig.exec.stderr);
-        if (!m) throw new CeaError('INVALID_INPUT', 'could not derive a crash signature from the compiler output', 'Pass crash_signature: a stable substring of the crash message (assertion text or the innermost stack frame).', { stderr: preview(orig.exec.stderr, 25) });
-        signature = m[1]!.trim().slice(0, 200);
+        const d = deriveCrashSignature(orig.exec.stderr);
+        if (!d) throw new CeaError('INVALID_INPUT', 'could not derive a crash signature from the compiler output', 'Pass crash_signature: a stable substring of the crash message (assertion text or the innermost stack frame).', { stderr: preview(orig.exec.stderr, 25) });
+        signature = d.signature;
+        if (!d.specific) ev.limit('The crash output has no assertion text or symbolised stack frame, so the signature is generic: the reduction may end on a different crash. Pass crash_signature if you can.');
       } else if (!orig.exec.stderr.includes(signature)) {
         throw new CeaError('INVALID_INPUT', 'crash_signature does not appear in the original crash output', 'Use a substring of the stderr view of this record.');
       }

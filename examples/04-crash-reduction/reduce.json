@@ -1,0 +1,6 @@
+{
+  "source": { "path": "examples/04-crash-reduction/crash.c" },
+  "kind": "crash",
+  "compiler": "clang",
+  "flags": ["-O2"]
+}

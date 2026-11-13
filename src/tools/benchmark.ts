@@ -141,7 +141,7 @@ export const benchmark = defineTool({
 
     const cpus = os.cpus();
     const machine = {
-      cpu_model: cpus[0]?.model ?? 'unknown',
+      cpu_model: (cpus[0]?.model ?? 'unknown').trim(),
       logical_cpus: cpus.length,
       platform: `${process.platform} ${os.release()} ${process.arch}`,
       load_average: os.loadavg().map((x) => round(x, 2)),

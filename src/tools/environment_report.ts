@@ -81,7 +81,7 @@ export const environmentReport = defineTool({
           platform: process.platform,
           arch: process.arch,
           os_release: os.release(),
-          cpu_model: cpus[0]?.model ?? 'unknown',
+          cpu_model: (cpus[0]?.model ?? 'unknown').trim(),
           logical_cpus: cpus.length,
           node: process.version,
         },

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { materialize, SourceSchema, TimeoutSchema } from '../core/build.js';
@@ -52,37 +53,68 @@ export function parseAliveOutput(text: string): AliveReport {
   return { pairs, summary: c === null || i === null ? null : { correct: c, incorrect: i, failed_to_prove: f ?? 0, errors: e ?? 0 } };
 }
 
-function stripForCombine(fn: string): string {
-  return fn
-    .replace(/,? ![A-Za-z_.]+ !\d+/g, '')
-    .replace(/ #\d+/g, '')
-    .replace(/^(define\b[^@]*)(dso_local |local_unnamed_addr |hidden |internal |private )+/m, '$1');
+const ID_OFFSET = 100_000;
+
+/** Shift numbered metadata (!12) and attribute groups (#3) so two modules can share one file. */
+function renumber(ir: string): string {
+  return ir
+    .replace(/!(\d+)\b/g, (_, n: string) => `!${Number(n) + ID_OFFSET}`)
+    .replace(/(^attributes | )#(\d+)\b/gm, (_, pre: string, n: string) => `${pre}#${Number(n) + ID_OFFSET}`);
 }
 
 /**
  * Build a single module with @src and @tgt from a before/after pair, for alive-tv's
  * one-file mode (used by the remote provider, which accepts one source text).
+ *
+ * Metadata and attribute groups carry semantics (!range, !nonnull, noundef, nofree ...), so
+ * they are kept: the "after" module's numbered IDs are shifted instead of being stripped.
  */
 export function combineForAlive(before: string, after: string, fn: string): string {
+  const afterShifted = renumber(normalizeNewlines(after));
   const a = extractIrFunction(before, fn);
-  const b = extractIrFunction(after, fn);
+  const b = extractIrFunction(afterShifted, fn);
   if (!a || !b) throw new CeaError('NOT_FOUND', `function "${fn}" is not defined in both before and after IR`, 'Pass the IR symbol name that exists in both modules.');
   const esc = fn.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const rename = (text: string, to: string) => stripForCombine(text).replace(new RegExp(`@"?${esc}"?\\(`), `@${to}(`);
-  const header = new Map<string, string>();
-  for (const line of [...normalizeNewlines(before).split('\n'), ...normalizeNewlines(after).split('\n')]) {
-    if (/^(target (datalayout|triple) = |%[\w.]+ = type )/.test(line)) header.set(line, line);
-    const g = /^(@[\w.$"]+) = /.exec(line);
-    if (g && !header.has(g[1]!)) header.set(g[1]!, stripForCombine(line));
-    const d = /^declare\b[^@]*(@[\w.$"]+)\(/.exec(line);
-    if (d && !header.has(d[1]!)) header.set(d[1]!, stripForCombine(line));
+  const rename = (text: string, to: string) => text
+    .replace(new RegExp(`@"?${esc}"?\\(`), `@${to}(`)
+    .replace(/^(define\b[^@]*?)(internal |private |linkonce_odr |available_externally )+/m, '$1');
+  // Index every module-level definition, then keep only what the two functions reach.
+  // Unreached material (debug-info compile units with local file paths, other functions'
+  // declarations) is neither needed for the proof nor something to send to a third party.
+  const fixed: string[] = [];
+  const defs = new Map<string, string>();
+  for (const text of [normalizeNewlines(before), afterShifted]) {
+    for (const line of text.split('\n')) {
+      if (/^(target (datalayout|triple) = |%[\w.]+ = type )/.test(line)) {
+        if (!fixed.includes(line)) fixed.push(line);
+        continue;
+      }
+      const m = /^(@[\w.$"]+) = /.exec(line) ?? /^declare\b[^@]*(@[\w.$"]+)\(/.exec(line) ?? /^(!\d+) = /.exec(line) ?? /^attributes (#\d+) = /.exec(line);
+      if (m && !defs.has(m[1]!)) defs.set(m[1]!, line);
+    }
   }
-  return [...header.values(), '', rename(a, 'src'), '', rename(b, 'tgt'), ''].join('\n');
+  const src = rename(a, 'src');
+  const tgt = rename(b, 'tgt');
+  const used = new Map<string, string>();
+  const queue = [src, tgt];
+  while (queue.length > 0) {
+    const text = queue.pop()!;
+    for (const ref of text.match(/@[\w.$"]+|!\d+|#\d+/g) ?? []) {
+      const line = defs.get(ref);
+      if (line !== undefined && !used.has(ref)) {
+        used.set(ref, line);
+        queue.push(line);
+      }
+    }
+  }
+  const pick = (re: RegExp) => [...used.entries()].filter(([k]) => re.test(k)).map(([, v]) => v);
+  return [...fixed, ...pick(/^@/), '', src, '', tgt, '', ...pick(/^#/), ...pick(/^!/), ''].join('\n');
 }
 
 const UNSOUND_NOTE = [
   'Alive2 is bounded: loops are unrolled a fixed number of times, so a counterexample needing more iterations is missed.',
   'Alive2 checks one function at a time (no interprocedural reasoning) and approximates memory, function calls and some intrinsics; "correct" means no counterexample within those limits.',
+  'Alive2 does not model type-based alias analysis: IR carrying !tbaa metadata is rejected or checked without it, so a transformation that is only valid under strict aliasing cannot be verified and may be reported as incorrect.',
 ];
 
 export const validateTransform = defineTool({
@@ -121,6 +153,7 @@ export const validateTransform = defineTool({
 
     let output: string;
     let where: string;
+    let sentText = '';
     const smtMs = String(input.smt_timeout_s * 1000);
     if (provider === 'local') {
       const alive = await ev.tool('alive-tv');
@@ -133,11 +166,16 @@ export const validateTransform = defineTool({
       const r = await ev.run('alive-tv', alive.path, [...args, `--smt-to=${smtMs}`, ...input.extra_args], { timeoutMs: (input.smt_timeout_s * 4 + 60) * 1000 });
       if (r.timedOut) throw new CeaError('TIMEOUT', 'alive-tv timed out', 'Raise smt_timeout_s, or reduce the function first.');
       output = `${r.stdout}\n${r.stderr}`;
+      sentText = args.map((f) => fs.readFileSync(f, 'utf8')).join(String.fromCharCode(10));
       where = `local alive-tv (${alive.version})`;
     } else {
       let text: string;
       if (hasPair) {
-        text = materialize(ev, fix(input.pair!), 'pair').text;
+        // Module ids and source file names are local paths; they are not needed remotely.
+        text = materialize(ev, fix(input.pair!), 'pair').text
+          .replace(/^; ModuleID = .*$/m, '; ModuleID = \'pair\'')
+          .replace(/^source_filename = .*$/m, 'source_filename = "pair"')
+          .replace(/(DIFile\(filename: )"[^"]*"(, directory: )"[^"]*"/g, '$1"input"$2"."');
       } else {
         const b = materialize(ev, fix(input.before!), 'before').text;
         const a = materialize(ev, fix(input.after!), 'after').text;
@@ -148,8 +186,9 @@ export const validateTransform = defineTool({
           fn = names[0]!;
         }
         text = combineForAlive(b, a, fn);
-        ev.limit('Remote mode sends one combined module: attribute groups and metadata (!tbaa, !range, !dbg, function attributes) were stripped, so facts they carry are not used in the proof.');
+        ev.limit('Remote mode sends one combined module built textually from the two inputs (the after module\'s metadata and attribute-group numbers are shifted). Calls from the function to itself still name the original symbol.');
       }
+      sentText = text;
       ev.view('alive-input.ll', text, 'module sent to the Alive2 Compiler Explorer instance');
       const url = process.env['CEA_ALIVE2_CE_URL'] ?? ALIVE2_CE_URL;
       const r = await ceCompile(ctx, url, 'alive', text, [`--smt-to=${smtMs}`, ...input.extra_args].join(' '), (input.smt_timeout_s + 60) * 1000);
@@ -162,6 +201,7 @@ export const validateTransform = defineTool({
     }
 
     const report = parseAliveOutput(output);
+    const usesTbaa = /!tbaa/.test(sentText);
     let pairs = report.pairs;
     if (input.function && provider === 'local' && !hasPair) pairs = pairs.filter((p) => p.function === input.function);
     const incorrect = pairs.filter((p) => p.verdict === 'incorrect');
@@ -177,7 +217,10 @@ export const validateTransform = defineTool({
       ev.infer('No refinement violation exists within Alive2\'s bounds for the compared functions.');
       ev.unknown('Correctness beyond Alive2\'s loop bound and memory model, and for functions that were not compared.');
     } else {
-      ev.unknown(pairs.length === 0 ? 'alive-tv produced no verdict (parse error, no matching function pair, or unsupported IR); see the output view.' : 'Alive2 could not prove or refute the transformation (timeout or unsupported feature).');
+      ev.unknown(pairs.length === 0
+        ? `alive-tv produced no verdict${usesTbaa ? ': the IR carries !tbaa metadata, which Alive2 does not model' : ' (parse error, no matching function pair, or unsupported IR)'}; see the output view.`
+        : 'Alive2 could not prove or refute the transformation (timeout or unsupported feature).');
+      if (usesTbaa) ev.observe('The IR being compared carries !tbaa (type-based aliasing) metadata.');
     }
     ev.cover('functions_compared', pairs.map((p) => p.function));
     ev.cover('provider', where);
@@ -186,9 +229,10 @@ export const validateTransform = defineTool({
       status: verdict === 'inconclusive' ? 'inconclusive' : 'ok',
       summary: verdict === 'incorrect'
         ? `INCORRECT: ${first!.function ?? 'transform'}: ${first!.error ?? 'does not verify'}`
-        : verdict === 'correct' ? `correct within Alive2 bounds (${correct.length} function pair(s))` : 'Alive2 gave no verdict',
+        : verdict === 'correct' ? `correct within Alive2 bounds (${correct.length} function pair(s))` : `Alive2 gave no verdict${usesTbaa ? ' (the IR uses !tbaa, which Alive2 does not model)' : ''}`,
       result: {
         verdict,
+        uses_tbaa: usesTbaa,
         provider: where,
         pairs: pairs.slice(0, 30).map((p) => ({ ...p, counterexample: p.counterexample ? preview(p.counterexample, 40, 3000) : null })),
         counts: { correct: correct.length, incorrect: incorrect.length, unproven: unproven.length },

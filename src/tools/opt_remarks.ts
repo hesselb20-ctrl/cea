@@ -136,8 +136,8 @@ export const optRemarks = defineTool({
     const counts = { missed: list.filter((r) => r.kind === 'missed').length, analysis: list.filter((r) => r.kind === 'analysis').length, passed: list.filter((r) => r.kind === 'passed').length };
     const all = list.map((r) => `${r.kind}\t${r.pass}\t${r.function}\t${r.line ?? ''}:${r.column ?? ''}\t${r.message}${r.count > 1 ? `\t(x${r.count})` : ''}`).join('\n');
     const allView = ev.view('remarks.tsv', all + '\n', 'all selected remarks: kind, pass, function, line:col, message');
-    for (const r of list.filter((x) => x.kind === 'missed').slice(0, 8)) {
-      ev.observe(`missed [${r.pass}] ${r.function || ''}${r.line !== null ? ` line ${r.line}` : ''}: ${r.message}`);
+    for (const r of list.filter((x) => x.kind !== 'passed').slice(0, 10)) {
+      ev.observe(`${r.kind} [${r.pass}] ${r.function || ''}${r.line !== null ? ` line ${r.line}` : ''}: ${r.message}`);
     }
     ev.cover('remarks_total', total);
     ev.cover('remarks_selected', list.length);

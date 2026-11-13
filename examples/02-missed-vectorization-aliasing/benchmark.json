@@ -1,0 +1,14 @@
+{
+  "source": { "path": "examples/02-missed-vectorization-aliasing/scale.c" },
+  "variants": [
+    { "name": "baseline", "compiler": "clang", "flags": ["-O2"] },
+    {
+      "name": "restrict",
+      "compiler": "clang",
+      "flags": ["-O2"],
+      "source": { "path": "examples/02-missed-vectorization-aliasing/scale_restrict.c" }
+    }
+  ],
+  "runs": 10,
+  "warmup": 2
+}

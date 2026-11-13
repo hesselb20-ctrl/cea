@@ -1,0 +1,7 @@
+{
+  "source": { "path": "examples/02-missed-vectorization-aliasing/scale.c" },
+  "compiler": "clang",
+  "flags": ["-O2"],
+  "function": "scale",
+  "passes": ["loop-vectorize"]
+}

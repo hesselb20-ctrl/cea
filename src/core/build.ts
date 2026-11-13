@@ -210,6 +210,22 @@ export async function compileTo(ev: EvidenceBuilder, req: CompileRequest): Promi
 
 /* ---------- running compiled test programs ---------- */
 
+/** Directories holding compiler runtime DLLs (sanitizers, libgcc) that test programs need on Windows. */
+export function runtimeDirs(compilerPath: string): string[] {
+  const bin = path.dirname(compilerPath);
+  const dirs = [bin];
+  const root = path.dirname(bin);
+  try {
+    for (const d of fs.readdirSync(root)) {
+      const cand = path.join(root, d, 'bin');
+      if (/mingw|w64/.test(d) && fs.existsSync(cand)) dirs.push(cand);
+    }
+  } catch {
+    /* toolchain root not listable: the compiler's own directory is enough */
+  }
+  return dirs;
+}
+
 export interface ProgramRun {
   exec: ExecResult;
   stdout_sha256: string;
@@ -222,17 +238,7 @@ export interface ProgramRun {
  * This limits accidents; it is not a security boundary. The program's code does execute.
  */
 export async function runProgram(ev: EvidenceBuilder, exe: string, spec: RunSpec, purpose: string, opts: { compilerPath?: string; env?: Record<string, string>; keep?: 'both' | 'stdout' | 'stderr' | 'none' } = {}): Promise<ProgramRun> {
-  const extraDirs: string[] = [];
-  if (opts.compilerPath) {
-    // Sanitizer and compiler runtime DLLs live next to (or near) the compiler on Windows.
-    const bin = path.dirname(opts.compilerPath);
-    extraDirs.push(bin);
-    const root = path.dirname(bin);
-    for (const d of fs.existsSync(root) ? fs.readdirSync(root) : []) {
-      const cand = path.join(root, d, 'bin');
-      if (/mingw|w64/.test(d) && fs.existsSync(cand)) extraDirs.push(cand);
-    }
-  }
+  const extraDirs = opts.compilerPath ? runtimeDirs(opts.compilerPath) : [];
   const basePath = process.env['PATH'] ?? process.env['Path'] ?? '';
   const env: Record<string, string> = {
     PATH: [...extraDirs, basePath].join(path.delimiter),
