@@ -1,9 +1,10 @@
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/hero-mobile-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/hero-mobile-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/hero-dark.svg">
-  <img src=".github/assets/hero-light.svg" width="100%" alt="cea. Makes coding agents prove compiler claims. Prototype v0.1.0, partly verified. MCP server, CLI and agent skill; one evidence record per call; no real miscompile confirmed yet.">
-</picture>
+# cea
+
+Makes coding agents prove compiler claims.
+
+<img src=".github/assets/figure.webp" width="100%" alt="3D chart. Thirteen builds of one program give two different outputs. A funnel of bands then narrows as each of eight test builds halves the suspect optimisation passes, from 270 down to one: pass 19, instcombine.">
+
+<sub>A replay of the recorded run in `examples/05-ub-sanitizers-cannot-see` (clang 23.1.5), following the halving loop in `src/tools/bisect_passes.ts`. Not re-run here. The verdict was undefined behaviour in the program, not a compiler bug.</sub>
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-01-dark.svg">
@@ -49,13 +50,6 @@ asking why a loop was not vectorised, checking a peephole rewrite, or reducing a
   <img src=".github/assets/rule-03-light.svg" width="100%" alt="03 How it works">
 </picture>
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/flow-mobile-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/flow-mobile-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/flow-dark.svg">
-  <img src=".github/assets/flow-light.svg" width="100%" alt="Data flow. Request: an agent over MCP stdio or a person on the cea CLI calls one of 20 tools from a single registry, and the input is checked against a strict schema that refuses flags which load code into the compiler. Run: the toolbox looks up 19 providers on PATH with their versions, each process starts from an argument array with no shell, a timeout and an output cap, and the installed compilers and tools do the work. Record: the result becomes an evidence record split into observed, inferred and unknown, it is appended to a JSONL ledger with raw output on disk, and the caller gets the record and its evidence id.">
-</picture>
-
 1. **Request.** An agent calls a tool over MCP on stdio (`cea mcp`), or a person runs
    `cea <tool> --json '<input>'`. Both read the same tool list in `src/registry.ts`, so they cannot drift.
 2. **Validate.** Input is checked against a strict zod schema. Flags that make the compiler load other
@@ -72,26 +66,10 @@ asking why a loop was not vectorised, checking a peephole rewrite, or reducing a
 6. **Cite.** Later calls refer to earlier records by id. `triage_miscompile` chains the steps and
    stops as soon as the question is answered.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/scene-dark.gif">
-  <img src=".github/assets/scene-light.gif" width="100%" alt="Nine slabs in a row stand for the nine triage steps of example 5, lighting in order; above step 4 a strip of 270 pass posts narrows by halving to pass 19, above step 5 a stack of 18 line plates shrinks to 10, each step leaves a record tile in a row in front, and the step 9 tile stays open because Alive2 gave no verdict.">
-</picture>
-
-<sub>A replay of the triage recorded in [`examples/05-ub-sanitizers-cannot-see/README.md`](examples/05-ub-sanitizers-cannot-see/README.md):
-the step order, pass 19 of 270, 18 to 10 lines and the missing Alive2 verdict come from the author's
-recorded run, not from a run on this machine. The halving order follows `src/tools/bisect_passes.ts`;
-timing and sizes are drawn, not measured.</sub>
-
 No network is used by default. The one remote feature sends IR to the Alive2 project's Compiler
 Explorer instance, and only when `CEA_REMOTE_PROVIDERS=compiler-explorer` is set.
 
-<p><img src="docs/demo/triage.gif" width="100%" alt="Terminal recording of cea triage on examples/01-ub-not-a-compiler-bug/overflow.c. Step 1 pins the environment, step 2 check_ub finds signed integer overflow at overflow.c:3. Verdict undefined_behavior, compiler bug no, with evidence ids."></p>
-
-<sub>A recording of the real project running: `cea triage` on example 1, made with
-`scripts/record-demo.mjs` from a run on Windows with clang 23.1.5. The typed prompt is scripted; the
-output and its timing are real ([`docs/demo/triage.cast`](docs/demo/triage.cast)). It stops after two
-steps because the UB finding answers the question. It was not re-run for this README, because no
-compiler was installed on the machine used.</sub>
+A terminal recording of `cea triage` on example 1 is in [`docs/demo/triage.gif`](docs/demo/triage.gif).
 
 <picture>
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-04-dark.svg">
@@ -196,7 +174,7 @@ node dist/cli.js tools
 
 Without clang, `node dist/cli.js triage examples/01-ub-not-a-compiler-bug/overflow.c` stops with
 `clang is not available` and exit code 2. With clang installed it should print the run in the
-recording above; that was not run here.
+linked recording; that was not run here.
 
 The package is also on npm as `cea-agents` 0.1.0 (`npm install -g cea-agents`). That install,
 `cea mcp` with an agent and `cea install-skill` were not run here. Agent setup and environment
