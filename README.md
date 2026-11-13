@@ -163,7 +163,7 @@ Read these before trusting a result.
 - **llvm-mca is a static model**: no caches, no branch misprediction, no frontend effects.
 - **`benchmark` measures wall-clock time of whole processes** on one machine with one input. It is not pinned to a core and does not read hardware counters; perf is detected but not used yet.
 - **The built-in reducer removes whole lines only.** Install cvise for real reductions.
-- **Coverage of this release.** Developed and run on Windows 11 with clang 23.1.5 (llvm-mingw) and GCC 16.2; CI runs unit tests on Linux, macOS and Windows and integration tests on Ubuntu. The Rust paths (rustc `emit_ir`, Miri in `check_ub`), YARPGen, MSan and a local `alive-tv` binary are implemented from the tools' documentation and unit-tested with fakes, but have not been run against the real tools. [PROGRESS.md](PROGRESS.md) lists exactly what was verified and how.
+- **Coverage of this release.** Developed and run on Windows 11 with clang 23.1.5 (llvm-mingw) and GCC 16.2; CI runs unit tests on Linux, macOS and Windows and integration tests on Ubuntu. Csmith fuzzing was run for real with Csmith 2.3.0. The Rust paths (rustc `emit_ir`, Miri in `check_ub`), YARPGen, MSan and a local `alive-tv` binary are implemented from the tools' documentation and unit-tested with fakes, but have not been run against the real tools. [PROGRESS.md](PROGRESS.md) lists exactly what was verified and how.
 - GCC support is narrower than LLVM support: no IR validation, tree dumps only in `pass_timeline`, and a flag scan in place of pass bisection.
 
 ## Development

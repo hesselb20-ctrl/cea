@@ -2,7 +2,7 @@
 
 Status of every requirement in the original brief for v0.1.0. "Verified" means it was run, and says by what. Nothing here is marked done on the strength of having been written.
 
-Local verification machine: Windows 11, Node 26, clang 23.1.5 (llvm-mingw 20261104, target `x86_64-w64-windows-gnu`), LLVM 23.1.5 tools (opt, llc, llvm-reduce, llvm-mca, llvm-mc), GCC 16.2.0 (MinGW-w64), git 2.53. Not installed locally: rustc, cargo, Miri, FileCheck, alive-tv, cvise, creduce, Csmith, YARPGen, perf. CI adds Ubuntu with clang, GCC, cvise, creduce and Csmith.
+Local verification machine: Windows 11, Node 26, clang 23.1.5 (llvm-mingw 20261104, target `x86_64-w64-windows-gnu`), LLVM 23.1.5 tools (opt, llc, llvm-reduce, llvm-mca, llvm-mc), GCC 16.2.0 (MinGW-w64), Csmith 2.3.0 (built from source), git 2.53. Not installed locally: rustc, cargo, Miri, FileCheck, alive-tv, cvise, creduce, YARPGen, perf. CI adds Ubuntu with clang, GCC, cvise, creduce and Csmith.
 
 Test suites: `test/unit` (100 tests, providers mocked), `test/docs.test.ts` (10 tests), `test/integration/real.test.ts` (30 tests against real tools).
 
@@ -39,7 +39,7 @@ All tools: strict JSON schemas (unit: "gives every tool a strict object schema")
 | `validate_transform` | done | remote alive-tv (examples 3 and 5) | a local `alive-tv` binary was never available; that path is unit-tested with a fake |
 | `analyze_throughput` | done | llvm-mca 23.1.5 | |
 | `benchmark` | done | clang, example 2 | governor read on Linux only; no hardware counters |
-| `fuzz_compiler` | done | Csmith in CI | YARPGen path written from its documentation, never run |
+| `fuzz_compiler` | done | Csmith 2.3.0 locally (25 seeds, clang and GCC at -O0 and -O2: 23 compared, 2 skipped for non-termination, 0 candidates) and in CI | YARPGen path written from its documentation, never run |
 | `bisect_compiler_history` | done | real git on a generated repository | not run on an actual compiler checkout (needs hours of builds) |
 | `record_unknown` / `update_unknown` | done | unit | |
 | `export_evidence_bundle` | done | unit and integration | single JSON file plus a Markdown index |
