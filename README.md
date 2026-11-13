@@ -19,8 +19,8 @@ One wrong compiler rewrite breaks everyone's programs. One wrong "it's a compile
 Requires Node 20 or newer, and whichever compilers you want to use. cea never installs or downloads a compiler.
 
 ```sh
-npm install -g github:hesselb20-ctrl/cea    # the `cea` command
-cea doctor                                  # what was found, what is missing, how to fix it
+npm install -g cea-agents    # the `cea` command
+cea doctor                   # what was found, what is missing, how to fix it
 cea triage examples/01-ub-not-a-compiler-bug/overflow.c
 ```
 
@@ -31,7 +31,7 @@ claude mcp add cea -- cea mcp     # the MCP server
 cea install-skill                 # the skill, into ~/.claude/skills/compiler-engineering
 ```
 
-The package name is `cea-agents`. It is not on the npm registry yet; until it is, install from GitHub as above. Setup for other clients, environment variables and troubleshooting: [connection and recovery](skills/compiler-engineering/references/connection-and-recovery.md).
+The npm package is [`cea-agents`](https://www.npmjs.com/package/cea-agents); without a global install, `npx -y cea-agents <command>` works too. Setup for other clients, environment variables and troubleshooting: [connection and recovery](skills/compiler-engineering/references/connection-and-recovery.md).
 
 ## What it looks like
 

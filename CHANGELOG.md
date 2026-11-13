@@ -20,7 +20,6 @@ First release.
 
 ### Known gaps
 
-- Not yet published to the npm registry; install from GitHub.
 - Rust (rustc `emit_ir`, Miri), YARPGen, MSan and a local alive-tv binary have not been exercised against the real tools.
 - `benchmark` does not read hardware counters.
 - The Compiler Explorer remote provider covers `validate_transform` only.

@@ -9,11 +9,11 @@ cea never installs or downloads a compiler. It finds what is already on the mach
 Requires Node 20 or newer.
 
 ```sh
-npm install -g github:hesselb20-ctrl/cea   # provides the `cea` command
-cea doctor                                 # what was detected, what is missing, and the fix for each
+npm install -g cea-agents    # provides the `cea` command
+cea doctor                   # what was detected, what is missing, and the fix for each
 ```
 
-The package name is `cea-agents`. Once it is on the npm registry, `npm install -g cea-agents` and `npx -y cea-agents <command>` work as well; until then install from GitHub.
+Without a global install, every command works through `npx -y cea-agents <command>`, and the server can be registered as `claude mcp add cea -- npx -y cea-agents mcp`.
 
 ## Register the MCP server
 

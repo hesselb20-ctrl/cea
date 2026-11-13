@@ -99,4 +99,4 @@ All tools: strict JSON schemas (unit: "gives every tool a strict object schema")
 | LICENSE (MIT), CONTRIBUTING, CHANGELOG, SECURITY.md, docs per tool family, issue templates | done |
 | Commits in logical steps, GitHub no-reply address | done |
 | Public GitHub repository `cea`, tag `v0.1.0`, release with notes | see the release page |
-| npm publish | not done, by instruction: waits for confirmation |
+| npm publish | done after confirmation: `cea-agents@0.1.0` on the npm registry; a clean `npm install cea-agents` was run and the installed `cea` executed |
