@@ -80,8 +80,7 @@ export const analyzeThroughput = defineTool({
       const compiler = await ev.compiler(input.compiler);
       if (compiler.family !== 'clang' && compiler.family !== 'gcc') throw new CeaError('UNSUPPORTED', 'analyze_throughput compiles with clang or gcc', 'Pass assembly text via `asm` for other compilers.');
       const source = materialize(ev, input.source);
-      const march = input.flags.some((f) => /^-m(arch|cpu|tune)=/.test(f)) ? [] : [];
-      const r = await compileTo(ev, { compiler, source, flags: [...input.flags, ...march], kind: 'asm', outBase: 'mca', purpose: 'compile to assembly', timeoutMs: input.timeout_s * 1000 });
+      const r = await compileTo(ev, { compiler, source, flags: input.flags, kind: 'asm', outBase: 'mca', purpose: 'compile to assembly', timeoutMs: input.timeout_s * 1000 });
       if (!r.ok) return { status: 'ok', summary: 'compilation failed; nothing to analyse', result: { success: false, stderr_preview: preview(r.exec.stderr, 30) } };
       asm = fs.readFileSync(r.outPath, 'utf8');
       triple ??= compiler.target;

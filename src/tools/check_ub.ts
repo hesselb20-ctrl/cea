@@ -64,7 +64,7 @@ export const checkUb = defineTool({
     run: RunSpecSchema.default(DEFAULT_RUN),
     cargo_project: z.string().optional().describe('Rust only: path to a cargo project to run under Miri instead of `source`.'),
   }),
-  async run(input, ev, ctx) {
+  async run(input, ev) {
     for (const l of SANITIZER_BLIND_SPOTS) ev.limit(l);
 
     if (input.cargo_project) {

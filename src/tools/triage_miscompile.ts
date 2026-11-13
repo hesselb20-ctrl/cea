@@ -75,7 +75,7 @@ export const triageMiscompile = defineTool({
     };
 
     // 1. Pin the environment.
-    const env = await step(ctx, ev, log, 'environment', () => invokeTool(ctx, environmentReport, { probe_sanitizers: false }));
+    await step(ctx, ev, log, 'environment', () => invokeTool(ctx, environmentReport, { probe_sanitizers: false }));
     const compilerInfo = await ev.compiler(input.compiler);
     const envLine = `${compilerInfo.version.replace(/ \(https?:[^)]*\)/, '')}, target ${compilerInfo.target ?? 'unknown'}`;
     ev.observe(`Compiler under test: ${envLine}; flags ${input.flags.join(' ')} vs reference ${input.reference_flags.join(' ')}`);
@@ -296,7 +296,6 @@ export const triageMiscompile = defineTool({
       ...log.map((s) => `| ${s.step} | \`${s.evidence_id}\` | ${s.summary.replace(/\|/g, '\\|')} |`),
       '',
     ].join('\n');
-    void env;
     return finish(verdict, headline, {
       culprit: culprit ?? null,
       reduced: reducedOk ? { evidence_id: reduced!.evidence_id, lines: (reduced!.result['after'] as { lines: number }).lines } : null,
