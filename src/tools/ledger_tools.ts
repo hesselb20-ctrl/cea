@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { defineTool, type Ctx } from '../core/context.js';
 import { CeaError } from '../core/errors.js';
 import type { UnknownRecord } from '../core/types.js';
-import { normalizeNewlines } from '../core/util.js';
+import { countLines, normalizeNewlines } from '../core/util.js';
 
 const EvidenceId = z.string().regex(/^ev_[A-Za-z0-9._-]+$/, 'must be an evidence_id such as ev_compile_1a2b3c4d');
 const UnknownId = z.string().regex(/^unk_[a-f0-9]+$/, 'must be an unknown_id such as unk_1a2b3c4d');
@@ -28,7 +28,9 @@ export const inspectEvidenceView = defineTool({
     if (!input.view) {
       return { status: 'ok', summary: `${e.operation}: ${e.summary}`, result: { evidence: e, views: e.views } };
     }
-    const lines = normalizeNewlines(ctx.ledger.readView(input.evidence_id, input.view)).split('\n');
+    const raw = normalizeNewlines(ctx.ledger.readView(input.evidence_id, input.view));
+    const lines = raw.split('\n');
+    if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
     let numbered = lines.map((text, i) => ({ n: i, text }));
     if (input.contains) numbered = numbered.filter((l) => l.text.includes(input.contains!));
     const page = numbered.slice(input.offset, input.offset + input.limit);
@@ -39,7 +41,7 @@ export const inspectEvidenceView = defineTool({
       result: {
         evidence_id: input.evidence_id,
         view: input.view,
-        total_lines: lines.length,
+        total_lines: countLines(raw),
         matching_lines: numbered.length,
         offset: input.offset,
         next_offset: next,

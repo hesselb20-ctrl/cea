@@ -70,7 +70,7 @@ const LOOP_PASS = /loop|licm|vectoriz|unroll|slp|vect/i;
 
 export const optRemarks = defineTool({
   name: 'opt_remarks',
-  family: 'performance',
+  family: 'compile',
   title: 'Optimisation remarks',
   description:
     'Collect optimisation remarks: what the optimiser did and, more usefully, what it declined to do and why (-fsave-optimization-record for clang, -fopt-info-all for GCC). ' +

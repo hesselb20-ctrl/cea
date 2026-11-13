@@ -67,7 +67,7 @@ export const environmentReport = defineTool({
       ev.limit(w);
     }
     const remote = { compiler_explorer: ctx.config.remoteProviders.has('compiler-explorer') };
-    if (remote.compiler_explorer) warnings.push('Remote provider compiler-explorer is enabled: validate_transform may send IR to godbolt.org.');
+    if (remote.compiler_explorer) warnings.push('Remote provider compiler-explorer is enabled: validate_transform may send IR to alive2.llvm.org.');
 
     const cpus = os.cpus();
     const missing = providers.filter((p) => !p.available).map((p) => p.id);

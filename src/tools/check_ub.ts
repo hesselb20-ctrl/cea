@@ -56,7 +56,7 @@ export const checkUb = defineTool({
     'Build the program with UBSan and ASan (MSan where it links; Miri for a Rust crate) at -O0 and -O1, run it, and return every finding with its source location. ' +
     'Run this before blaming a compiler: a program with undefined behaviour has no "correct" output for the optimiser to preserve.',
   input: z.strictObject({
-    source: SourceSchema,
+    source: SourceSchema.optional().describe('The C or C++ program. Required unless cargo_project is given.'),
     compiler: z.string().min(1).default('clang'),
     flags: FlagsSchema.default([]).describe('Extra flags (defines, -std=...). Do not pass an -O level; see opt_levels.'),
     opt_levels: z.array(OptLevelSchema).min(1).max(4).default(['O0', 'O1']),
@@ -86,6 +86,7 @@ export const checkUb = defineTool({
     if (compiler.family !== 'clang' && compiler.family !== 'gcc') {
       throw new CeaError('UNSUPPORTED', 'check_ub builds with sanitizers and needs clang or gcc', 'For Rust pass cargo_project to use Miri.');
     }
+    if (!input.source) throw new CeaError('INVALID_INPUT', 'source is required (or cargo_project for Rust)', 'Pass {"source": {"path": "file.c"}}.');
     const source = materialize(ev, input.source);
     const groups: string[][] = [];
     const main = input.sanitizers.filter((s) => s !== 'memory');

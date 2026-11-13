@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { z } from 'zod';
 import { DEFAULT_RUN, FlagsSchema, materialize, RunSpecSchema, SourceSchema, TimeoutSchema } from '../core/build.js';
-import { defineTool, invokeTool, type Ctx, type EvidenceBuilder } from '../core/context.js';
+import { defineTool, invokeTool, type EvidenceBuilder } from '../core/context.js';
 import { unifiedDiff } from '../core/diff.js';
 import type { Evidence } from '../core/types.js';
 import { preview } from '../core/util.js';
@@ -33,10 +33,10 @@ interface StepLog {
 const SEMANTIC_PROBE = ['-fwrapv', '-fno-strict-aliasing', '-fno-delete-null-pointer-checks'];
 const norm = (s: string) => s.toLowerCase().replace(/pass$/, '').replace(/[^a-z0-9]/g, '');
 
-async function step(ctx: Ctx, ev: EvidenceBuilder, log: StepLog[], name: string, run: () => Promise<Evidence>): Promise<Evidence> {
+async function step(ev: EvidenceBuilder, log: StepLog[], name: string, run: () => Promise<Evidence>, rename: (s: string) => string = (s) => s): Promise<Evidence> {
   const e = await run();
   ev.derive(e.evidence_id);
-  log.push({ step: name, evidence_id: e.evidence_id, status: e.status, summary: e.summary });
+  log.push({ step: name, evidence_id: e.evidence_id, status: e.status, summary: rename(e.summary) });
   return e;
 }
 
@@ -65,6 +65,7 @@ export const triageMiscompile = defineTool({
     // Sub-steps get the same bytes, by path, so every record hashes the same file.
     const source = { path: src.file };
     const base = { source, compiler: input.compiler };
+    const label = (t: string) => t.split(path.basename(src.file)).join(fileLabel);
     const finish = (verdict: TriageVerdict, headline: string, extra: Record<string, unknown>, report: string) => {
       const v = ev.view('report.md', report, 'draft report (Markdown)');
       return {
@@ -75,13 +76,13 @@ export const triageMiscompile = defineTool({
     };
 
     // 1. Pin the environment.
-    await step(ctx, ev, log, 'environment', () => invokeTool(ctx, environmentReport, { probe_sanitizers: false }));
+    await step(ev, log, 'environment', () => invokeTool(ctx, environmentReport, { probe_sanitizers: false }), label);
     const compilerInfo = await ev.compiler(input.compiler);
     const envLine = `${compilerInfo.version.replace(/ \(https?:[^)]*\)/, '')}, target ${compilerInfo.target ?? 'unknown'}`;
     ev.observe(`Compiler under test: ${envLine}; flags ${input.flags.join(' ')} vs reference ${input.reference_flags.join(' ')}`);
 
     // 2. Undefined behaviour first.
-    const ub = await step(ctx, ev, log, 'check_ub', () => invokeTool(ctx, checkUb, { ...base, flags: input.flags.filter((f) => !/^-O/.test(f) && !/^-f(no-)?(wrapv|strict-aliasing)/.test(f)), run: input.run }));
+    const ub = await step(ev, log, 'check_ub', () => invokeTool(ctx, checkUb, { ...base, flags: input.flags.filter((f) => !/^-O/.test(f) && !/^-f(no-)?(wrapv|strict-aliasing)/.test(f)), run: input.run }), label);
     const findings = (ub.result['findings'] as UbFinding[] | undefined) ?? [];
     if (findings.length > 0) {
       const f = findings[0]!;
@@ -116,7 +117,7 @@ export const triageMiscompile = defineTool({
     else ev.observe('check_ub: no sanitizer findings at -O0 and -O1.');
 
     // 3. Does it reproduce, and against whom?
-    const diff = await step(ctx, ev, log, 'differential_run', () => invokeTool(ctx, differentialRun, {
+    const diff = await step(ev, log, 'differential_run', () => invokeTool(ctx, differentialRun, {
       source, run: input.run,
       extra_configs: [
         { compiler: input.compiler, flags: input.reference_flags },
@@ -153,7 +154,7 @@ export const triageMiscompile = defineTool({
     }
 
     // 4. Which pass?
-    const bis = await step(ctx, ev, log, 'bisect_passes', () => invokeTool(ctx, bisectPasses, { ...base, flags: input.flags, reference_flags: input.reference_flags, run: input.run }));
+    const bis = await step(ev, log, 'bisect_passes', () => invokeTool(ctx, bisectPasses, { ...base, flags: input.flags, reference_flags: input.reference_flags, run: input.run }), label);
     const culprit = bis.result['culprit'] as { n: number; pass: string; unit: string } | null | undefined;
     const lastGood = bis.result['last_good_limit'] as number | undefined;
     const firstBad = bis.result['first_bad_limit'] as number | undefined;
@@ -163,7 +164,7 @@ export const triageMiscompile = defineTool({
     // 5. Make it small.
     let reduced: Evidence | null = null;
     if (input.reduce) {
-      reduced = await step(ctx, ev, log, 'reduce_testcase', () => invokeTool(ctx, reduceTestcase, { ...base, kind: 'miscompile', flags: input.flags, reference_flags: input.reference_flags, run: input.run, timeout_s: input.reduce_timeout_s }));
+      reduced = await step(ev, log, 'reduce_testcase', () => invokeTool(ctx, reduceTestcase, { ...base, kind: 'miscompile', flags: input.flags, reference_flags: input.reference_flags, run: input.run, timeout_s: input.reduce_timeout_s }), label);
       if (reduced.result['verified'] !== true) ev.unknown(`The test case was not reduced (${reduced.summary}).`);
     }
 
@@ -173,11 +174,11 @@ export const triageMiscompile = defineTool({
     const fn = input.function ?? (culprit && !/^\[/.test(culprit.unit) ? culprit.unit : undefined);
     if (culprit && lastGood !== undefined && firstBad !== undefined) {
       if (fn) {
-        await step(ctx, ev, log, 'pass_timeline', () => invokeTool(ctx, passTimeline, { ...base, function: fn, flags: input.flags, only_passes: [norm(culprit.pass)], limit: 4 }));
+        await step(ev, log, 'pass_timeline', () => invokeTool(ctx, passTimeline, { ...base, function: fn, flags: input.flags, only_passes: [norm(culprit.pass)], limit: 4 }), label);
       }
       const lim = (n: number) => [...input.flags, '-mllvm', `-opt-bisect-limit=${n}`];
-      const before = await step(ctx, ev, log, 'ir_before_culprit', () => invokeTool(ctx, compile, { ...base, flags: lim(lastGood), output: 'ir' }));
-      const after = await step(ctx, ev, log, 'ir_after_culprit', () => invokeTool(ctx, compile, { ...base, flags: lim(firstBad), output: 'ir' }));
+      const before = await step(ev, log, 'ir_before_culprit', () => invokeTool(ctx, compile, { ...base, flags: lim(lastGood), output: 'ir' }), label);
+      const after = await step(ev, log, 'ir_after_culprit', () => invokeTool(ctx, compile, { ...base, flags: lim(firstBad), output: 'ir' }), label);
       if (before.result['success'] === true && after.result['success'] === true) {
         const b = ctx.ledger.readView(before.evidence_id, 'output.ll');
         const a = ctx.ledger.readView(after.evidence_id, 'output.ll');
@@ -189,7 +190,7 @@ export const triageMiscompile = defineTool({
         if (d.added + d.removed === 0) {
           ev.observe('The IR is identical on both sides of the culprit pass: the pass is a code generation (backend) pass, which Alive2 cannot check.');
         } else if (input.validate) {
-          validation = await step(ctx, ev, log, 'validate_transform', () => invokeTool(ctx, validateTransform, { before: { code: b, language: 'llvm-ir' }, after: { code: a, language: 'llvm-ir' }, ...(fn ? { function: fn } : {}) }));
+          validation = await step(ev, log, 'validate_transform', () => invokeTool(ctx, validateTransform, { before: { code: b, language: 'llvm-ir' }, after: { code: a, language: 'llvm-ir' }, ...(fn ? { function: fn } : {}) }), label);
         }
       }
     }

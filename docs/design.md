@@ -16,7 +16,7 @@ human ──cea <tool> --json──▶ cli.ts ─┤
                                    ▼
                        registry.ts (tool definitions, zod schemas)
                                    ▼
-                core/invoke.ts  validate → EvidenceBuilder → tool.run → persist
+                core/context.ts validate → EvidenceBuilder → tool.run → persist
                     │                 │
           core/toolbox.ts        core/ledger.ts
        (find providers, versions)   (JSONL + views on disk)
@@ -67,7 +67,7 @@ Every tool call, including failures and "provider missing" outcomes, appends one
 | `derived_from[]` | evidence IDs this record builds on |
 | `error` | `{code, message, remediation}` when status is `error` or `unavailable` |
 
-Storage: `<CEA_HOME>/sessions/<session>/evidence.jsonl`, `unknowns.jsonl`, `views/<evidence_id>/<name>`, `work/<evidence_id>/`. `CEA_HOME` defaults to `.cea` in the working directory; the session defaults to `default` (`CEA_SESSION`). JSONL was chosen over SQLite to avoid a native dependency; the ledger is append-only and small.
+Storage: `<CEA_HOME>/sessions/<session>/evidence.jsonl`, `unknowns.jsonl`, `views/<evidence_id>/<name>`, `work/<evidence_id>/`, and `candidates/<evidence_id>/` for fuzzing finds. `CEA_HOME` defaults to `.cea` in the working directory; the session defaults to `default` (`CEA_SESSION`). JSONL was chosen over SQLite to avoid a native dependency; the ledger is append-only and small.
 
 Large outputs never enter the agent's context. Results hold bounded previews; the full text is a view, read page by page with `inspect_evidence_view` (line offset, limit, optional substring filter).
 
@@ -85,7 +85,7 @@ interface ProviderSpec {
 interface ProviderStatus { id; available; path?; version?; reason?; remediation? }
 ```
 
-`Toolbox.resolve(id)` checks, in order: `CEA_TOOL_<ID>`, the directory of the resolved clang (so `opt` matches `clang`), `CEA_TOOLCHAIN_DIRS`, `PATH`. Tools receive the toolbox and the `exec` function through a context object, which is what unit tests replace with fakes.
+`Toolbox.status(id)` and `Toolbox.require(id)` look, in order, at: `CEA_TOOL_<ID>`, the directory of the resolved clang (so `opt` matches `clang`), `CEA_TOOLCHAIN_DIRS`, `PATH`. Tools receive the toolbox and the `exec` function through a context object, which is what unit tests replace with fakes.
 
 The Compiler Explorer provider is remote and off by default. It is used only when `CEA_REMOTE_PROVIDERS` contains `compiler-explorer`, because it sends source code to a third party.
 
@@ -109,7 +109,7 @@ The Compiler Explorer provider is remote and off by default. It is used only whe
 | Tool versions differ between steps | every record carries tool paths and versions; `environment_report` flags mixed LLVM versions |
 | Pass bisection misattributes | result states that the first flipping pass may only expose a later or earlier fault; `validate_transform` is the check |
 | Context flooding | bounded results plus paged views |
-| Windows path and quoting problems | `path.join` everywhere, `os.tmpdir()`-free design (work dirs live in the session), interestingness tests are Node scripts, not shell |
+| Windows path and quoting problems | `path.join` everywhere, work dirs live in the session, `os.tmpdir()` (never a hard-coded `/tmp`) for the short-lived files of interestingness tests, which are Node scripts, not shell |
 
 ## Build order
 

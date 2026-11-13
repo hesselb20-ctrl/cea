@@ -17,7 +17,7 @@ export interface ProviderSpec {
   neededBy: string[];
   /** Remediation shown when the provider is missing. */
   install: string;
-  /** Version output that disqualifies a binary (a  that is really clang, as on macOS and llvm-mingw). */
+  /** Version output that disqualifies a binary (a "gcc" that is really clang, as on macOS and llvm-mingw). */
   reject?: RegExp;
   /** Restrict to some platforms (perf is Linux only). */
   platforms?: NodeJS.Platform[];
@@ -61,7 +61,7 @@ export const PROVIDERS: ProviderSpec[] = [
   { id: 'creduce', kind: 'reducer', candidates: ['creduce'], versionArgs: ['--version'], neededBy: ['reduce_testcase'], install: 'apt install creduce / brew install creduce. cvise is preferred when both exist.' },
   { id: 'csmith', kind: 'fuzzer', candidates: ['csmith'], versionArgs: ['--version'], neededBy: ['fuzz_compiler'], install: 'apt install csmith libcsmith-dev, or build from https://github.com/csmith-project/csmith. Set CEA_CSMITH_INCLUDE if csmith.h is not in /usr/include/csmith.' },
   { id: 'yarpgen', kind: 'fuzzer', candidates: ['yarpgen'], versionArgs: ['--version'], neededBy: ['fuzz_compiler'], install: 'Build YARPGen from https://github.com/intel/yarpgen and put it on PATH.' },
-  { id: 'perf', kind: 'profiler', candidates: ['perf'], versionArgs: ['--version'], neededBy: ['benchmark (hardware counters)'], install: 'apt install linux-tools-common linux-tools-$(uname -r). Linux only.', platforms: ['linux'] },
+  { id: 'perf', kind: 'profiler', candidates: ['perf'], versionArgs: ['--version'], neededBy: ['environment_report (detected and reported; benchmark does not read hardware counters yet)'], install: 'apt install linux-tools-common linux-tools-$(uname -r). Linux only.', platforms: ['linux'] },
   { id: 'git', kind: 'vcs', candidates: ['git'], versionArgs: ['--version'], neededBy: ['bisect_compiler_history'], install: 'Install git.' },
 ];
 

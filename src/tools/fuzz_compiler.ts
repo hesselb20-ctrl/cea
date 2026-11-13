@@ -132,7 +132,7 @@ export const fuzzCompiler = defineTool({
         for (const s of sources) fs.copyFileSync(s, path.join(out, path.basename(s)));
         if (crash) fs.writeFileSync(path.join(out, 'compiler-crash.stderr.txt'), crash.stderr, 'utf8');
         const behaviours = [...keys.entries()].map(([k, ids]) => ({ behaviour: k.split('|')[0], stdout_sha256: (k.split('|')[1] ?? '').slice(0, 16), configs: ids }));
-        const c = { seed, kind: crash ? 'compiler_crash' : 'divergence', path: out, behaviours, crash_config: crash?.id ?? null, crash_preview: crash ? preview(crash.stderr, 8) : null };
+        const c = { seed, kind: crash ? 'compiler_crash' : keys.has('build-failed') ? 'build_difference' : 'divergence', path: out, behaviours, crash_config: crash?.id ?? null, crash_preview: crash ? preview(crash.stderr, 8) : null };
         fs.writeFileSync(path.join(out, 'candidate.json'), JSON.stringify(c, null, 1), 'utf8');
         ev.view(`candidate-seed-${seed}.c`, fs.readFileSync(sources[sources.length - 1]!, 'utf8'), `candidate program for seed ${seed}`);
         candidates.push(c);

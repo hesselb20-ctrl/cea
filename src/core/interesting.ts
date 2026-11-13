@@ -63,7 +63,9 @@ for (const step of CFG.steps) {
       for (const s of step.stderr_includes ?? []) if (!stderr.includes(s)) done(1, step.id + ': crash signature missing: ' + s);
     }
   } else if (step.type === 'run') {
-    const env = { ...process.env, PATH: [...CFG.path_dirs, process.env.PATH ?? process.env.Path ?? ''].join(path.delimiter), UBSAN_OPTIONS: 'halt_on_error=1', ASAN_OPTIONS: 'detect_leaks=0' };
+    // Candidate programs get a scrubbed environment, like every test program cea runs.
+    const env = { PATH: [...CFG.path_dirs, process.env.PATH ?? process.env.Path ?? ''].join(path.delimiter), LANG: 'C', UBSAN_OPTIONS: 'halt_on_error=1', ASAN_OPTIONS: 'detect_leaks=0' };
+    for (const k of ['SystemRoot', 'TEMP', 'TMP', 'TMPDIR']) if (process.env[k]) env[k] = process.env[k];
     const r = spawnSync(sub(step.exe), step.args, { encoding: 'utf8', timeout: step.timeout_ms, input: step.stdin ?? '', env, maxBuffer: 16 * 1024 * 1024, windowsHide: true });
     if (r.error) done(1, step.id + ': ' + r.error.message);
     if (r.signal) done(1, step.id + ': killed by ' + r.signal);

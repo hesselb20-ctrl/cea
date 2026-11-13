@@ -128,9 +128,13 @@ export const benchmark = defineTool({
       Object.assign(rows[b.name]!, { stats: s, samples_ms: samples.get(b.name)!.map((x) => round(x, 2)) });
       ev.observe(`${b.name}: median ${s.median_ms} ms, range ${s.min_ms}-${s.max_ms} ms, CV ${s.cv_percent}% over ${s.runs} runs`);
     }
+    // The baseline is the first variant listed. If it was disqualified there is nothing to compare against.
+    const listedFirst = input.variants[0]!.name;
+    const baselineValid = valid[0]!.name === listedFirst;
+    if (!baselineValid) ev.limit(`The baseline variant ${listedFirst} was disqualified or did not build, so no comparison is reported.`);
     const baseline = valid[0]!;
     const bs = stats.get(baseline.name)!;
-    const comparisons = valid.slice(1).map((b) => {
+    const comparisons = (baselineValid ? valid.slice(1) : []).map((b) => {
       const s = stats.get(b.name)!;
       const overlap = !(s.max_ms < bs.min_ms || s.min_ms > bs.max_ms);
       const ratio = round(bs.median_ms / s.median_ms, 3);

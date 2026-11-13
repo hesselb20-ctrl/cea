@@ -11,7 +11,8 @@ import { VERSION } from './version.js';
 const HELP = `cea ${VERSION}: Compiler Engineering Agent
 
 Usage:
-  cea <tool> --json '<input>'      run a tool; prints the Evidence record as JSON
+  cea <tool> --json '<input>'      run a tool; prints its JSON result (an Evidence record,
+                                   or a cea.response/1 envelope for the ledger tools)
   cea <tool> --input <file.json>   same, input read from a file ("-" for stdin)
   cea tools                        list tools
   cea schema <tool>                print a tool's JSON input schema
@@ -37,6 +38,9 @@ Environment:
   CEA_TOOL_<NAME>          explicit path for one provider, e.g. CEA_TOOL_ALIVE_TV
   CEA_REMOTE_PROVIDERS     set to "compiler-explorer" to allow sending IR to the Alive2 online instance
   CEA_ALLOW_UNSAFE_FLAGS   set to 1 to allow -fplugin and similar flags
+  CEA_ALIVE2_CE_URL        base URL of the Alive2 Compiler Explorer instance
+  CEA_CSMITH_INCLUDE       directory containing csmith.h
+  NO_COLOR / FORCE_COLOR   turn colour off or on
 
 Tool names accept dashes or underscores (cea check-ub == cea check_ub).`;
 
@@ -98,6 +102,23 @@ const red = (s: string) => paint('31', s);
 const yellow = (s: string) => paint('33', s);
 const cyan = (s: string) => paint('36', s);
 
+/** Word-wrap to the terminal width, indenting continuation lines. */
+function wrap(text: string, first: string, rest: string): string {
+  const width = Math.max(60, Math.min(process.stdout.columns ?? 100, 110));
+  const out: string[] = [];
+  let line = first;
+  for (const word of text.split(' ')) {
+    if (line.length + word.length + 1 > width && line.trim().length > 0 && line !== first) {
+      out.push(line);
+      line = rest + word;
+    } else {
+      line += (line === first || line === rest ? '' : ' ') + word;
+    }
+  }
+  out.push(line);
+  return out.join('\n');
+}
+
 async function doctor(overrides: Partial<Config>): Promise<number> {
   const ctx = createContext(overrides);
   const e = await callTool(ctx, findTool('environment_report')!, {});
@@ -140,22 +161,22 @@ async function triage(args: Args, overrides: Partial<Config>): Promise<number> {
   const r = e.result as { verdict: string; headline: string; is_compiler_bug: string; steps: { step: string; evidence_id: string | null; status: string; summary: string }[]; report_markdown: string };
   for (const [i, s] of r.steps.entries()) {
     const mark = s.status === 'ok' ? green('ok') : s.status === 'inconclusive' ? yellow('??') : red('--');
-    console.log(`  ${dim(`[${i + 1}]`)} ${s.step.padEnd(18)} ${mark}  ${s.summary}`);
+    console.log(`  ${dim(`[${i + 1}]`)} ${s.step.padEnd(18)} ${mark}  ${wrap(s.summary, ' '.repeat(29), ' '.repeat(29)).slice(29)}`);
     console.log(`      ${dim(`evidence ${s.evidence_id}`)}`);
   }
   const color = r.verdict === 'transformation_refuted' ? red : r.verdict === 'unresolved' ? yellow : cyan;
   console.log('');
   console.log(`  ${bold('verdict:')} ${color(r.verdict)}`);
-  console.log(`  ${r.headline}`);
+  console.log(wrap(r.headline, '  ', '  '));
   console.log(`  ${bold('compiler bug?')} ${r.is_compiler_bug}`);
   if ('evidence_id' in e) {
     if (e.observed.length) console.log(`  ${bold('observed:')}`);
-    for (const o of e.observed) console.log(`    - ${o}`);
+    for (const o of e.observed) console.log(wrap(o, '    - ', '      '));
     if (e.inferred.length) console.log(`  ${bold('inferred:')}`);
-    for (const o of e.inferred) console.log(`    - ${o}`);
+    for (const o of e.inferred) console.log(wrap(o, '    - ', '      '));
     if (e.unknowns.length) console.log(`  ${bold('unknown:')}`);
-    for (const o of e.unknowns) console.log(`    - ${o}`);
-    console.log(dim(`  triage evidence ${e.evidence_id}; report: cea inspect_evidence_view --json '{"evidence_id":"${e.evidence_id}","view":"report.md"}'`));
+    for (const o of e.unknowns) console.log(wrap(o, '    - ', '      '));
+    console.log(dim(`  triage evidence ${e.evidence_id}  (report: view "report.md", or --report <file>)`));
     const out = str(args.opts.get('report'));
     if (out) {
       fs.writeFileSync(out, ctx.ledger.readView(e.evidence_id, 'report.md'), 'utf8');
@@ -177,7 +198,7 @@ function installSkill(args: Args): number {
   fs.mkdirSync(dest, { recursive: true });
   fs.cpSync(src, dest, { recursive: true });
   console.log(`Installed the compiler-engineering skill to ${dest}`);
-  console.log('Register the MCP server with:  claude mcp add cea -- npx -y cea-agents mcp');
+  console.log('Register the MCP server with:  claude mcp add cea -- cea mcp');
   return 0;
 }
 

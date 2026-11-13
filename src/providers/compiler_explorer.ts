@@ -2,7 +2,6 @@ import type { Ctx } from '../core/context.js';
 import { CeaError } from '../core/errors.js';
 
 export const REMOTE_ID = 'compiler-explorer';
-export const GODBOLT_URL = 'https://godbolt.org';
 /** The Alive2 project runs its own Compiler Explorer instance with alive-tv as a "compiler". */
 export const ALIVE2_CE_URL = 'https://alive2.llvm.org/ce';
 
