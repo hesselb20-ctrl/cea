@@ -96,7 +96,7 @@ The timing is the wall-clock time of the whole process, including start-up.
 | Name | Type | Default | Meaning |
 |---|---|---|---|
 | `source` | object | required | The program. Variants use it unless they give their own `source`. |
-| `variants` | array of objects | required | One to eight variants. The first is the baseline (if it is disqualified, the first variant that passed the output check is used as the baseline instead). Each has `name` (letters, digits and `._+-`, at most 40 characters), `compiler` (default `"clang"`), `flags` (default `["-O2"]`) and an optional `source`. |
+| `variants` | array of objects | required | One to eight variants. The first is the baseline (if it is disqualified or does not build, `comparisons` is empty and a limitation says so). Each has `name` (letters, digits and `._+-`, at most 40 characters), `compiler` (default `"clang"`), `flags` (default `["-O2"]`) and an optional `source`. |
 | `runs` | integer | `10` | Timed runs per variant, 5 to 200. Fewer than 5 is refused by the schema: no spread, no claim. |
 | `warmup` | integer | `2` | Warm-up runs per variant, 0 to 20. |
 | `run` | object | `{"args":[],"timeout_s":60}` | How to run each build; the timeout default is 60 seconds here. |
@@ -109,7 +109,7 @@ The timing is the wall-clock time of the whole process, including start-up.
 | `machine` | `cpu_model`, `logical_cpus`, `platform`, `load_average`, `scaling_governor` (read from Linux sysfs, "unknown" elsewhere), `total_memory_gb`. |
 | `variants` | For each variant name: `compiler`, `flags`, `built`, `outcome`, `stdout_sha256`, `output_correct`, `note`, `stats`, `samples_ms`, and `stderr_preview` if the build failed. |
 | `stats` | `runs`, `median_ms`, `min_ms`, `max_ms`, `mean_ms`, `stddev_ms`, `mad_ms`, `iqr_ms`, `cv_percent`. |
-| `comparisons` | For each variant after the first valid one: `variant`, `baseline`, `median_ratio`, `ranges_overlap`, `distinguishable`. |
+| `comparisons` | For each variant after the baseline (empty if the baseline was disqualified or did not build): `variant`, `baseline`, `median_ratio`, `ranges_overlap`, `distinguishable`. |
 | `output_check` | `expected_stdout` or "agreement with baseline". |
 | `disqualified` | Names of variants that built but gave wrong output or timed out. |
 
@@ -146,6 +146,7 @@ cea benchmark --input input.json
 - If the baseline median is under 50 ms, a limitation warns that process start-up is a large part of it; lengthen the workload.
 - If any variant's coefficient of variation is above 5 percent, a limitation says the machine is noisy: close other work, pin the governor to performance, or raise `runs`.
 - If any timed run produced different output than the correctness run, a limitation says the program is non-deterministic or failing intermittently and its timings are suspect.
+- If the baseline (the first variant listed) was disqualified or did not build, a limitation says no comparison is reported.
 - An unknown records that the result may not hold on other CPUs, inputs and data sizes.
 
 ### What it does not tell you

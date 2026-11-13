@@ -22,13 +22,13 @@ Each build uses `-g -fsanitize=... -fno-sanitize-recover=all -fno-omit-frame-poi
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
-| `source` | object | required | The program. See the note on `cargo_project` below. |
+| `source` | object | required unless `cargo_project` is given | The program. If both are missing the tool returns `INVALID_INPUT`. |
 | `compiler` | string | `"clang"` | clang or gcc. rustc is refused (`UNSUPPORTED`); use `cargo_project`. |
 | `flags` | string[] | `[]` | Extra flags (defines, `-std=...`). Do not pass an `-O` level; use `opt_levels`. |
 | `opt_levels` | array of levels | `["O0","O1"]` | One to four optimisation levels. |
 | `sanitizers` | array of `undefined`, `address`, `memory` | `["undefined","address"]` | Sanitizers to use. `memory` is tried as a separate build. |
 | `run` | object | `{"args":[],"timeout_s":10}` | How to run each build; see [tools-compile.md](tools-compile.md). |
-| `cargo_project` | string | none | Rust only: path to a cargo project to run under Miri instead of `source`. The schema still requires `source`; it is not read when `cargo_project` is set. |
+| `cargo_project` | string | none | Rust only: path to a cargo project to run under Miri instead of `source`. `source` is not read when `cargo_project` is set. |
 
 ### Key result fields
 
@@ -410,11 +410,11 @@ A candidate is a lead, not a bug report. Run `check_ub` and `reduce_testcase` on
 | `programs_compared` | Programs that built and ran in time and were compared. |
 | `skipped_timeout` | Programs skipped for non-termination. |
 | `generator_failures` | Seeds for which the generator failed. |
-| `candidates` | One entry per candidate: `seed`, `kind` ("divergence" or "compiler_crash"), `path`, `behaviours`, `crash_config`, `crash_preview`. |
+| `candidates` | One entry per candidate: `seed`, `kind` ("divergence", "build_difference" or "compiler_crash"), `path`, `behaviours`, `crash_config`, `crash_preview`. |
 | `candidates_dir` | Where candidate sources are saved: `candidates/<evidence_id>/seed-N/` in the session directory, with a `candidate.json` for each. `null` when there were none. |
 | `configs` | The configurations compared. |
 
-A "divergence" is any disagreement among the builds of one program, which includes some builds succeeding and others failing; look at `behaviours` before assuming the outputs differ.
+A candidate `kind` is "compiler_crash" (a compiler crashed), "build_difference" (some configurations failed to build, without a crash, while others built) or "divergence" (builds ran and their behaviour differed).
 
 Csmith needs its runtime header `csmith.h`. cea looks in `CEA_CSMITH_INCLUDE` and a few standard locations, and refuses with `PROVIDER_UNAVAILABLE` if it finds none.
 

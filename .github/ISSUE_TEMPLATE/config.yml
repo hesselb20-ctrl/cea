@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/hesselb20-ctrl/cea/security/advisories/new
+    about: Report security problems privately with a GitHub security advisory, not in a public issue. See SECURITY.md.

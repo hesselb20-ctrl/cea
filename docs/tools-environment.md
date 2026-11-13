@@ -105,9 +105,9 @@ The table is generated from the provider list in `src/core/toolbox.ts`. "Needed 
 | `creduce` | reducer | `reduce_testcase` | `CEA_TOOL_CREDUCE` | `apt install creduce` or `brew install creduce`. `cvise` is preferred when both exist. |
 | `csmith` | fuzzer | `fuzz_compiler` | `CEA_TOOL_CSMITH` | `apt install csmith libcsmith-dev`, or build from https://github.com/csmith-project/csmith. Set `CEA_CSMITH_INCLUDE` if `csmith.h` is not in a standard include directory. |
 | `yarpgen` | fuzzer | `fuzz_compiler` | `CEA_TOOL_YARPGEN` | Build YARPGen from https://github.com/intel/yarpgen and put it on `PATH`. |
-| `perf` | profiler | `benchmark` (hardware counters) | `CEA_TOOL_PERF` | `apt install linux-tools-common linux-tools-$(uname -r)`. Linux only; on other platforms the provider is reported as not supported. |
+| `perf` | profiler | `environment_report` (detected and reported; `benchmark` does not read hardware counters yet) | `CEA_TOOL_PERF` | `apt install linux-tools-common linux-tools-$(uname -r)`. Linux only; on other platforms the provider is reported as not supported. |
 | `git` | vcs | `bisect_compiler_history` | `CEA_TOOL_GIT` | Install git. |
 
-Two notes on the table. The `miri` row uses `cargo` as its program and the version check `cargo miri --version`. The `perf` provider is listed and detected, but the current `benchmark` implementation does not call it and records that it uses no hardware counters. Details are in [tools-performance.md](tools-performance.md).
+Two notes on the table. The `miri` row uses `cargo` as its program and the version check `cargo miri --version`. The `perf` provider is detected and reported, but `benchmark` does not read hardware counters yet. Details are in [tools-performance.md](tools-performance.md).
 
 The `llvm-mc` provider is detected only so that `environment_report` can show it.
