@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: unit (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      # Providers are mocked here, so these run the same on every OS.
+      - run: npm run test:unit
+
+  integration:
+    name: integration (real clang, gcc, cvise, csmith)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install compilers and tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm gcc cvise creduce csmith libcsmith-dev
+      - run: npm ci
+      - run: npm run build
+      - name: What was detected
+        run: node dist/cli.js doctor
+        env:
+          CEA_HOME: ${{ runner.temp }}/cea
+      # A test whose provider is missing is skipped, not failed; the run prints which ones.
+      - name: Integration tests
+        run: npx vitest run test/integration --reporter=verbose
+      - name: Example 1 end to end
+        run: node dist/cli.js triage examples/01-ub-not-a-compiler-bug/overflow.c --report triage-report.md && cat triage-report.md
+        env:
+          CEA_HOME: ${{ runner.temp }}/cea
+      - name: Example 5 end to end
+        run: node dist/cli.js triage examples/05-ub-sanitizers-cannot-see/alias.c
+        env:
+          CEA_HOME: ${{ runner.temp }}/cea

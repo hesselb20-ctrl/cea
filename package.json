@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:unit": "vitest run test/unit test/docs.test.ts",
     "test:integration": "vitest run test/integration",
+    "prepare": "tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run build"
   },
   "keywords": ["mcp", "compiler", "llvm", "clang", "gcc", "alive2", "agent", "skill", "miscompile", "evidence"],
