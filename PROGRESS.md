@@ -4,7 +4,7 @@ Status of every requirement in the original brief for v0.1.0. "Verified" means i
 
 Local verification machine: Windows 11, Node 26, clang 23.1.5 (llvm-mingw 20261104, target `x86_64-w64-windows-gnu`), LLVM 23.1.5 tools (opt, llc, llvm-reduce, llvm-mca, llvm-mc), GCC 16.2.0 (MinGW-w64), Csmith 2.3.0 (built from source), git 2.53. Not installed locally: rustc, cargo, Miri, FileCheck, alive-tv, cvise, creduce, YARPGen, perf. CI adds Ubuntu with clang, GCC, cvise, creduce and Csmith.
 
-Test suites: `test/unit` (100 tests, providers mocked), `test/docs.test.ts` (10 tests), `test/integration/real.test.ts` (30 tests against real tools).
+Test suites: `test/unit` (101 tests, providers mocked), `test/docs.test.ts` (10 tests), `test/integration/real.test.ts` (30 tests against real tools).
 
 ## 1. Architecture
 

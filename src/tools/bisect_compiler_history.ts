@@ -81,7 +81,8 @@ export const bisectCompilerHistory = defineTool({
       const run = await g('git bisect run', ['bisect', 'run', process.execPath, runner], input.timeout_s * 1000);
       runOut = `${run.stdout}\n${run.stderr}`;
       timedOut = run.timedOut;
-      first = /([0-9a-f]{40}) is the first bad commit/.exec(runOut)?.[1] ?? null;
+      // Newer git quotes the term: "<sha> is the first 'bad' commit".
+      first = /([0-9a-f]{40}) is the first '?bad'? commit/.exec(runOut)?.[1] ?? null;
       log = (await g('git bisect log', ['bisect', 'log'])).stdout;
     } finally {
       await g('git bisect reset', ['bisect', 'reset']);

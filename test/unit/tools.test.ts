@@ -515,6 +515,12 @@ describe('bisect_compiler_history', () => {
     expect(runner).toContain('process.exit(125)');
   });
 
+  it('understands the quoted wording of newer git versions', async () => {
+    const quoted: Handler = (args) => (args.slice(2).join(' ').startsWith('bisect run') ? { stdout: `${FIRST} is the first 'bad' commit\n` } : git()(args, undefined, ''));
+    const e = await invokeTool(fake({ git: quoted }).ctx, bisectCompilerHistory, { repo: repo(), good: 'good-tag', bad: 'HEAD', test: ['t'] });
+    expect(res(e).first_bad_commit).toBe(FIRST);
+  });
+
   it('refuses a dirty checkout and option-like revisions', async () => {
     const dirty = await invokeTool(fake({ git: git(true) }).ctx, bisectCompilerHistory, { repo: repo(), good: 'good-tag', bad: 'HEAD', test: ['t'] });
     expect(dirty.error?.message).toMatch(/uncommitted changes/);
