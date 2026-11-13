@@ -72,6 +72,16 @@ asking why a loop was not vectorised, checking a peephole rewrite, or reducing a
 6. **Cite.** Later calls refer to earlier records by id. `triage_miscompile` chains the steps and
    stops as soon as the question is answered.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/scene-dark.gif">
+  <img src=".github/assets/scene-light.gif" width="100%" alt="Nine slabs in a row stand for the nine triage steps of example 5, lighting in order; above step 4 a strip of 270 pass posts narrows by halving to pass 19, above step 5 a stack of 18 line plates shrinks to 10, each step leaves a record tile in a row in front, and the step 9 tile stays open because Alive2 gave no verdict.">
+</picture>
+
+<sub>A replay of the triage recorded in [`examples/05-ub-sanitizers-cannot-see/README.md`](examples/05-ub-sanitizers-cannot-see/README.md):
+the step order, pass 19 of 270, 18 to 10 lines and the missing Alive2 verdict come from the author's
+recorded run, not from a run on this machine. The halving order follows `src/tools/bisect_passes.ts`;
+timing and sizes are drawn, not measured.</sub>
+
 No network is used by default. The one remote feature sends IR to the Alive2 project's Compiler
 Explorer instance, and only when `CEA_REMOTE_PROVIDERS=compiler-explorer` is set.
 
