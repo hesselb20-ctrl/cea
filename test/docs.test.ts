@@ -44,11 +44,12 @@ describe('documentation files', () => {
     }
   });
 
-  it('opens the README with the demo and the pitch', () => {
+  it('opens the README with the hero and the pitch, and keeps the demo', () => {
     const readme = read(path.join(root, 'README.md'));
     const firstLines = readme.split('\n').slice(0, 8).join('\n');
-    expect(firstLines).toContain('docs/demo/triage.gif');
-    expect(readme).toContain("Give your coding agent a compiler engineer's toolbox — and make it prove every claim.");
+    expect(firstLines).toContain('.github/assets/hero-light.svg');
+    expect(firstLines).toContain('Makes coding agents prove compiler claims.');
+    expect(readme).toContain('docs/demo/triage.gif');
   });
 });
 
