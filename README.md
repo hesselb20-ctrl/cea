@@ -6,12 +6,7 @@ Makes coding agents prove compiler claims.
 
 <sub>A replay of the recorded run in `examples/05-ub-sanitizers-cannot-see` (clang 23.1.5), following the halving loop in `src/tools/bisect_passes.ts`. Not re-run here. The verdict was undefined behaviour in the program, not a compiler bug.</sub>
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-01-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-01-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-01-dark.svg">
-  <img src=".github/assets/rule-01-light.svg" width="100%" alt="01 What it is">
-</picture>
+## What it is
 
 cea (Compiler Engineering Agent) gives a coding agent the tools a compiler engineer uses: compile,
 inspect IR, check for undefined behaviour, compare optimisation levels, find the pass that changed
@@ -23,12 +18,7 @@ It ships as an MCP server, a CLI (`cea`) and an agent skill. It is a prototype a
 It has been run against real clang and GCC by its author and in CI, but several paths were only
 tested with fakes, and it has never confirmed a real miscompile.
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-02-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-02-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-02-dark.svg">
-  <img src=".github/assets/rule-02-light.svg" width="100%" alt="02 Why it exists">
-</picture>
+## Why it exists
 
 **The problem.** A program prints one answer at `-O0` and another at `-O2`. The quick conclusion is
 "miscompile". Often it is undefined behaviour in the program, which lets the optimiser do anything.
@@ -43,12 +33,7 @@ before claims, small before large.
 **Who it is for.** People who use a coding agent on compiler work: triaging a suspected miscompile,
 asking why a loop was not vectorised, checking a peephole rewrite, or reducing a compiler crash.
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-03-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-03-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-03-dark.svg">
-  <img src=".github/assets/rule-03-light.svg" width="100%" alt="03 How it works">
-</picture>
+## How it works
 
 1. **Request.** An agent calls a tool over MCP on stdio (`cea mcp`), or a person runs
    `cea <tool> --json '<input>'`. Both read the same tool list in `src/registry.ts`, so they cannot drift.
@@ -71,12 +56,7 @@ Explorer instance, and only when `CEA_REMOTE_PROVIDERS=compiler-explorer` is set
 
 A terminal recording of `cea triage` on example 1 is in [`docs/demo/triage.gif`](docs/demo/triage.gif).
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-04-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-04-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-04-dark.svg">
-  <img src=".github/assets/rule-04-light.svg" width="100%" alt="04 Capabilities">
-</picture>
+## Capabilities
 
 What the code does today. Each of the 20 tools is both an MCP tool and a CLI command.
 
@@ -124,12 +104,7 @@ Known limits, from [`PROGRESS.md`](PROGRESS.md) and the code:
 - GCC support is narrower than LLVM: no IR validation and a flag scan instead of pass bisection.
 - The skill's reference guides have not been reviewed by a compiler engineer.
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-05-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-05-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-05-dark.svg">
-  <img src=".github/assets/rule-05-light.svg" width="100%" alt="05 Quick start">
-</picture>
+## Quick start
 
 Requires Node 20 or newer, plus whichever compilers you want cea to drive. Commands below were run on
 Windows 11 with Node 26.13.0 and npm 11.20.0. No compiler was installed on that machine, so only the
@@ -180,12 +155,7 @@ The package is also on npm as `cea-agents` 0.1.0 (`npm install -g cea-agents`). 
 `cea mcp` with an agent and `cea install-skill` were not run here. Agent setup and environment
 variables: [connection and recovery](skills/compiler-engineering/references/connection-and-recovery.md).
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-06-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-06-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-06-dark.svg">
-  <img src=".github/assets/rule-06-light.svg" width="100%" alt="06 Stack, status, roadmap">
-</picture>
+## Stack, status, roadmap
 
 **Stack**
 
@@ -229,11 +199,6 @@ variables: [connection and recovery](skills/compiler-engineering/references/conn
 | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`CHANGELOG.md`](CHANGELOG.md) | Development and changes |
 | [`skills/compiler-engineering/SKILL.md`](skills/compiler-engineering/SKILL.md) | The agent skill |
 
-<picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset=".github/assets/rule-mobile-07-dark.svg">
-  <source media="(max-width: 600px)" srcset=".github/assets/rule-mobile-07-light.svg">
-  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/rule-07-dark.svg">
-  <img src=".github/assets/rule-07-light.svg" width="100%" alt="07 License">
-</picture>
+## License
 
 MIT. See [`LICENSE`](LICENSE).
