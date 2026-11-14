@@ -56,6 +56,10 @@ Explorer instance, and only when `CEA_REMOTE_PROVIDERS=compiler-explorer` is set
 
 A terminal recording of `cea triage` on example 1 is in [`docs/demo/triage.gif`](docs/demo/triage.gif).
 
+<img src=".github/assets/figure-how.webp" width="100%" alt="Five recorded cases move through cea's nine-step triage chain as rows of tiles, one per evidence record: example 1 stops after two steps at undefined behaviour, example 5 runs all nine, and the 16 records end in five verdicts.">
+
+<sub>Five example runs recorded by the author on 2026-11-13 with clang 23.1.5; replayed from the example READMEs, not re-run.</sub>
+
 ## Capabilities
 
 What the code does today. Each of the 20 tools is both an MCP tool and a CLI command.
@@ -103,6 +107,10 @@ Known limits, from [`PROGRESS.md`](PROGRESS.md) and the code:
 - `benchmark` times whole processes on one machine and reads no hardware counters.
 - GCC support is narrower than LLVM: no IR validation and a flag scan instead of pass bisection.
 - The skill's reference guides have not been reviewed by a compiler engineer.
+
+<img src=".github/assets/figure-more.webp" width="100%" alt="The 88 lines of a file that crashes clang drawn as bars, deleted test by test until only the macro and its one use remain, followed by line counts before and after for two recorded reductions and the IR where a load and its return become ret i32 1.">
+
+<sub>Recorded reductions from examples 04 (88 to 2 lines, 25 tests) and 05 (18 to 10). The deletion order is a replay of the repo's own reducer, not re-run against clang.</sub>
 
 ## Quick start
 
